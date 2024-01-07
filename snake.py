@@ -1,8 +1,10 @@
 import random
 
 
+# update it so that it only works with W A D, no backwards
 class SnakeGameAi:
     def __init__(self):
+
         self.board = [
             ['B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'],
             ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
@@ -25,6 +27,7 @@ class SnakeGameAi:
             ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
             ['B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B']
         ]
+        self.collision = False
         self.snake_head_row = None
         self.snake_head_col = None
         self.snake_segments = [(self.snake_head_row, self.snake_head_col)]
@@ -97,27 +100,39 @@ class SnakeGameAi:
         new_col = self.snake_head_col + delta_col
 
         # Check if the new position hits the boundary
-        if new_row < 0 or new_row >= len(self.board) or new_col < 0 or new_col >= len(self.board[0]):
-            print("You hit the boundary! Game Over.")
-            return False
+        if self.board[new_row][new_col] == "B":
+            print("hit the wall")
+            for segment in self.snake_segments:
+                row, col = segment
+                self.board[row][col] = '.'
+            self.snake_segments = [(new_row, new_col)] + self.snake_segments[:-1]
+            self.board[new_row][new_col] = 'H'  # Update the new head position
+            self.snake_head_row = new_row
+            self.snake_head_col = new_col
+            self.collision = True
 
         # Check if the new position overlaps with the snake's body
-        if (new_row, new_col) in self.snake_segments:
-            print("You hit yourself! Game Over.")
-            return False
+        if self.board[new_row][new_col] == "S":
+            print("hit yourself")
+            for segment in self.snake_segments:
+                row, col = segment
+                self.board[row][col] = '.'
+            self.snake_segments = [(new_row, new_col)] + self.snake_segments[:-1]
+            self.board[new_row][new_col] = 'H'  # Update the new head position
+            self.snake_head_row = new_row
+            self.snake_head_col = new_col
+            self.collision = True
 
         if self.board[new_row][new_col] == '.':
             # Clear the previous positions of the snake segments on the board
             for segment in self.snake_segments:
                 row, col = segment
                 self.board[row][col] = '.'
-
             # Move the snake and update its segments
             self.snake_segments = [(new_row, new_col)] + self.snake_segments[:-1]
             self.board[new_row][new_col] = 'H'  # Update the new head position
             self.snake_head_row = new_row
             self.snake_head_col = new_col
-            return True
         elif self.board[new_row][new_col] == 'F':
             # Clear the previous positions of the snake segments on the board
             for segment in self.snake_segments:
@@ -130,12 +145,16 @@ class SnakeGameAi:
             self.snake_head_row = new_row
             self.snake_head_col = new_col
             self.place_food()
-            return True
 
     def play(self):
-        while True:
+        playing = True
+        while playing:
             self.print_board()
             self.get_input()
+            if self.collision:
+                playing = False
+            self.print_board()
+
 
 
 if __name__ == '__main__':
