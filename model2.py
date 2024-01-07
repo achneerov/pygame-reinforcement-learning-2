@@ -118,37 +118,32 @@ class QTrainer:  # how the model will be trained.
 
 
     def train_step(self, state, action, reward, next_state, done):
-        state = preprocess_board(state)
-        state = torch.tensor(state, dtype=torch.float)
-        next_state = preprocess_board(next_state)
-        next_state = torch.tensor(next_state, dtype=torch.float)
-        action = torch.tensor(action, dtype=torch.long)
-        reward = torch.tensor(reward, dtype=torch.float)
+        processed_state = preprocess_board(state)
+        tensor_state = torch.tensor(processed_state, dtype=torch.float).clone().detach()
+        processed_next_state = preprocess_board(next_state)
+        tensor_next_state = torch.tensor(processed_next_state, dtype=torch.float).clone().detach()
+        action = torch.tensor(action, dtype=torch.long).clone().detach()
+        reward = torch.tensor(reward, dtype=torch.float).clone().detach()
 
         # Calculate the target Q values based on the current state and the next state
-        pred = self.model(state)
+        pred = self.model(tensor_state)  # Ensure tensor_state is used here
         target = pred.clone()
 
         if not done:  # Check if the game is done
-            Q_new = reward + self.gamma * torch.max(self.model(next_state))
+            Q_new = reward + self.gamma * torch.max(self.model(tensor_next_state))  # Ensure tensor_next_state is used here
         else:
             Q_new = reward
-
-
-        print("Action shape:", action.shape)
-        print("Target shape:", target.shape)
-        print("Q_new:", Q_new)
-        print("Argmax index:", torch.argmax(action).item())
-
+        # Print the shape of target to understand its dimensions
+        print("Shape of target:", target.shape)
 
         action_index = torch.argmax(action).item()
-        if action_index < target.shape[-1]:  # Check if the action index is within bounds
-            target[0][0][0][action_index] = Q_new  # Correct indexing based on the shape you've shown
+
+        # Check if action_index is within the bounds of target's shape
+        if action_index < target.shape[-1]:
+            target[0][0][action_index] = Q_new  # Correct indexing based on the shape you've shown
         else:
             print(f"Invalid action index: {action_index}. Setting a default action.")
             # Handle the situation by setting a default action or take appropriate action
-
-
 
         self.optimizer.zero_grad()
         loss = self.criterion(target, pred)
