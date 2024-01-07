@@ -1,10 +1,8 @@
 import random
 
 
-# update it so that it only works with W A D, no backwards
 class SnakeGameAi:
     def __init__(self):
-
         self.board = [
             ['B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'],
             ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
@@ -27,12 +25,49 @@ class SnakeGameAi:
             ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
             ['B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B']
         ]
+        self.reward = 0
+        self.score = 0
         self.collision = False
         self.snake_head_row = None
         self.snake_head_col = None
         self.snake_segments = [(self.snake_head_row, self.snake_head_col)]
-        self.place_snake()
-        self.place_food()
+        self._place_snake()
+        self._place_food()
+
+    def reset(self):
+        self.board = [
+            ['B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'B'],
+            ['B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B', 'B']
+        ]
+        self.reward = 0
+        self.score = 0
+        self.collision = False
+        self.snake_head_row = None
+        self.snake_head_col = None
+        self.snake_segments = [(self.snake_head_row, self.snake_head_col)]
+        self._place_snake()
+        self._place_food()
+
+    def get_board(self):
+        return self.board
 
     def update_snake_segments(self):
         board_copy = [row[:] for row in self.board]
@@ -42,12 +77,11 @@ class SnakeGameAi:
         self.board = board_copy
 
     def print_board(self):
-
         # Print the board
         for row in self.board:
             print(' '.join(row))
 
-    def place_snake(self):
+    def _place_snake(self):
         # Calculate the center of the board
         rows = len(self.board)
         cols = len(self.board[0])
@@ -65,7 +99,7 @@ class SnakeGameAi:
 
         return self.board
 
-    def place_food(self):
+    def _place_food(self):
         flag = False
         counter = 0
         while not flag:
@@ -79,20 +113,16 @@ class SnakeGameAi:
             if counter >= 10_000:
                 print("you won!")  # to be improved
 
-    def get_input(self):
-        direction = input("Enter direction (W/A/S/D): ").upper()
-        if direction not in ['W', 'A', 'S', 'D']:
-            print("Invalid input! Enter W, A, S, or D.")
-            return
-        if direction == 'W':
+    def play_step(self, move):  # [0,0,0] form
+        self.reward = 0
+        if move == [0, 1, 0]:
             self.move_snake(-1, 0)  # Move up
-        elif direction == 'A':
+        if move == [1, 0, 0]:
             self.move_snake(0, -1)  # Move left
-        elif direction == 'S':
-            self.move_snake(1, 0)  # Move down
-        elif direction == 'D':
+        if move == [0, 0, 1]:
             self.move_snake(0, 1)  # Move right
         self.update_snake_segments()
+        return self.reward, self.collision, self.score
 
     def move_snake(self, delta_row, delta_col):
         # Calculate new position
@@ -109,6 +139,7 @@ class SnakeGameAi:
             self.board[new_row][new_col] = 'H'  # Update the new head position
             self.snake_head_row = new_row
             self.snake_head_col = new_col
+            self.reward = -10
             self.collision = True
 
         # Check if the new position overlaps with the snake's body
@@ -121,6 +152,7 @@ class SnakeGameAi:
             self.board[new_row][new_col] = 'H'  # Update the new head position
             self.snake_head_row = new_row
             self.snake_head_col = new_col
+            self.reward = -10
             self.collision = True
 
         if self.board[new_row][new_col] == '.':
@@ -138,23 +170,23 @@ class SnakeGameAi:
             for segment in self.snake_segments:
                 row, col = segment
                 self.board[row][col] = '.'
-
+            self.score += + 1
+            self.reward = 10
             # Eat food, grow the snake, and update segments
             self.snake_segments = [(new_row, new_col)] + self.snake_segments
             self.board[new_row][new_col] = 'H'  # Update the new head position
             self.snake_head_row = new_row
             self.snake_head_col = new_col
-            self.place_food()
+            self._place_food()
 
     def play(self):
         playing = True
         while playing:
             self.print_board()
-            self.get_input()
+            self.play_step()
             if self.collision:
                 playing = False
             self.print_board()
-
 
 
 if __name__ == '__main__':
