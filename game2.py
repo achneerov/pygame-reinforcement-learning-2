@@ -113,16 +113,48 @@ class SnakeGameAi:
             if counter >= 10_000:
                 print("you won!")  # to be improved
 
-    def play_step(self, move):  # [0,0,0] form
+    def play_step(self, move=None):  # [0,0,0] form
+        # Define your knowledge base (KB) here or load it from wherever you need
+        kb_moves = [[0, 1, 0], [1, 0, 0], [0, 0, 1], [0, -1, 0]]  # Include a move for down as well
+        self.collision = False
         self.reward = 0
-        if move == [0, 1, 0]:
-            self.move_snake(-1, 0)  # Move up
-        if move == [1, 0, 0]:
-            self.move_snake(0, -1)  # Move left
-        if move == [0, 0, 1]:
-            self.move_snake(0, 1)  # Move right
+
+        if move is None:
+            # Take input from the keyboard
+            user_input = input("Enter 'W' for up, 'A' for left, 'S' for down, or 'D' for right: ").upper()
+
+            if user_input == 'W':
+                move = kb_moves[0]
+            elif user_input == 'A':
+                move = kb_moves[1]
+            elif user_input == 'D':
+                move = kb_moves[2]
+            elif user_input == 'S':  # Added option for moving down
+                move = kb_moves[3]
+            else:
+                print("Invalid input. Defaulting to no move.")
+                move = [0, 0, 0]  # Default move (no move)
+
+            if move == [0, 1, 0]:
+                self.move_snake(-1, 0)  # Move up
+            elif move == [1, 0, 0]:
+                self.move_snake(0, -1)  # Move left
+            elif move == [0, 0, 1]:
+                self.move_snake(0, 1)  # Move right
+            elif move == [0, -1, 0]:  # Move down
+                self.move_snake(1, 0)
+
+
         self.update_snake_segments()
-        return self.reward, self.collision, self.score
+
+        # Check if the game is over due to a collision
+        if self.collision:
+            done = True
+        else:
+            done = False
+
+        # Return the next state (board), reward, and done flag
+        return self.get_board(), self.reward, done
 
     def move_snake(self, delta_row, delta_col):
         # Calculate new position
