@@ -1,3 +1,5 @@
+#game2.py
+
 import random
 
 
@@ -113,9 +115,15 @@ class SnakeGameAi:
             if counter >= 10_000:
                 print("you won!")  # to be improved
 
-    def play_step(self, move=None):  # [0,0,0] form
+    def play_step(self, move=None):  # [0,0,0,0] form
         # Define your knowledge base (KB) here or load it from wherever you need
-        kb_moves = [[0, 1, 0], [1, 0, 0], [0, 0, 1], [0, -1, 0]]  # Include a move for down as well
+        kb_moves = [
+            [0, 1, 0, 0],  # Up
+            [0, 0, 1, 0],  # Left
+            [0, 0, 0, 1],  # Right
+            [1, 0, 0, 0]   # Down
+        ]
+
         self.collision = False
         self.reward = 0
 
@@ -129,37 +137,42 @@ class SnakeGameAi:
                 move = kb_moves[1]
             elif user_input == 'D':
                 move = kb_moves[2]
-            elif user_input == 'S':  # Added option for moving down
+            elif user_input == 'S':  # Option for moving down
                 move = kb_moves[3]
             else:
                 print("Invalid input. Defaulting to no move.")
-                move = [0, 0, 0]  # Default move (no move)
+                move = [0, 0, 0, 0]  # Default move (no move)
 
-            if move == [0, 1, 0]:
-                self.move_snake(-1, 0)  # Move up
-            elif move == [1, 0, 0]:
-                self.move_snake(0, -1)  # Move left
-            elif move == [0, 0, 1]:
-                self.move_snake(0, 1)  # Move right
-            elif move == [0, -1, 0]:  # Move down
-                self.move_snake(1, 0)
 
+        print(move)
+        if move == [0, 1, 0, 0]:  # Up
+            self.move_snake(-1, 0)
+        elif move == [0, 0, 1, 0]:  # Left
+            self.move_snake(0, -1)
+        elif move == [0, 0, 0, 1]:  # Right
+            self.move_snake(0, 1)
+        elif move == [1, 0, 0, 0]:  # Down
+            self.move_snake(1, 0)
 
         self.update_snake_segments()
 
         # Check if the game is over due to a collision
-        if self.collision:
-            done = True
-        else:
-            done = False
+        done = self.collision
 
         # Return the next state (board), reward, and done flag
         return self.get_board(), self.reward, done
+
 
     def move_snake(self, delta_row, delta_col):
         # Calculate new position
         new_row = self.snake_head_row + delta_row
         new_col = self.snake_head_col + delta_col
+
+        if new_row < 0 or new_row >= len(self.board) or new_col < 0 or new_col >= len(self.board[0]):
+            print("hit the wall")
+            self.reward = -10  # Set the negative reward for hitting the wall
+            self.collision = True  # Trigger collision flag
+            return
 
         # Check if the new position hits the boundary
         if self.board[new_row][new_col] == "B":
