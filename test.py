@@ -53,12 +53,8 @@ class Game:
         return total_cost
 
     def play(self, num_knives, num_guns, num_missiles):
-        enemies_defeated = 0
-        reward = 0
 
-        if num_knives < 0 or num_guns < 0 or num_missiles < 0:
-            print("no negative weapons")
-            return reward
+        reward = 0
         # Calculate the total cost based on the weapons
         self.total_cost = self.get_cost(num_knives, num_guns, num_missiles)
 
@@ -70,21 +66,7 @@ class Game:
         if self.total_cost < self.num_levels * self.missile:
             reward += 1
         for enemy in self.seed:
-            enemies_defeated += 1
-
-            if enemies_defeated == int(0.25 * self.num_levels):
-                print("25% of enemies defeated! Reward: +0.5")
-                reward += 0.5
-            elif enemies_defeated == int(0.5 * self.num_levels):
-                print("50% of enemies defeated! Reward: +1")
-                reward += 1
-            elif enemies_defeated == int(0.75 * self.num_levels):
-                print("75% of enemies defeated! Reward: +1.5")
-                reward += 1.5
-            elif enemies_defeated == self.num_levels - 1:
-                print("all enemies defeated")
-                reward += 10
-
+            reward += 1
             if enemy == "A":
                 if num_knives > 0:
                     print("Enemy type A encountered. Using a knife.")
@@ -126,6 +108,7 @@ class Game:
                     self.game_status = "lost"
                     break
 
+        print("reward:", reward)
         if self.game_status == "won":
             print("All enemies defeated. You win!")
             return reward
@@ -147,6 +130,7 @@ class WeaponSelector(nn.Module):
 
 
 if __name__ == "__main__":
+
     if mode == "1":
         # Play the game
         game = Game()
@@ -159,12 +143,13 @@ if __name__ == "__main__":
         num_missiles = int(input("Enter the number of missiles: "))
 
         game.play(num_knives, num_guns, num_missiles)
+
     if mode == "2":
         # Define parameters for training
-        num_episodes = 1000  # Number of games for training
-        plays_per_game = 10  # Number of plays per game
-        input_size = 4  # Number of input features: percentages of A, B, and C, and num_levels
-        hidden_size = 10  # Hidden layer size
+        num_episodes = 10000  # Number of games for training
+        plays_per_game = 100  # Number of plays per game
+        input_size = 7  # Number of input features: percentages of A, B, and C, num_levels, and prices of three weapons
+        hidden_size = 2048  # Hidden layer size
         output_size = 3  # Number of output values: num_knives, num_guns, num_missiles
 
         # Initialize neural network and optimizer
@@ -173,15 +158,20 @@ if __name__ == "__main__":
         criterion = nn.MSELoss()
 
         # Training loop
+        # Training loop
         for episode in range(num_episodes):
             total_reward = 0
+            episode_rewards = []  # List to store rewards for the current episode
 
             for _ in range(plays_per_game):
                 # Initialize game
                 game = Game()
 
-                # Prepare input features
-                input_features = torch.tensor([game.A, game.B, game.C, game.num_levels], dtype=torch.float32)
+                # Prepare input features including weapon prices
+                input_features = torch.tensor([
+                    game.A, game.B, game.C, game.num_levels,
+                    game.knife, game.gun, game.missile
+                ], dtype=torch.float32)
 
                 # Forward pass through the neural network
                 output = model(input_features)
@@ -193,19 +183,13 @@ if __name__ == "__main__":
 
                 # Play the game and get reward
                 reward = game.play(num_knives, num_guns, num_missiles)
-                total_reward += reward
+                total_reward += reward  # Accumulate the reward
+                episode_rewards.append(reward)  # Store reward for the current play
 
-                # Compute loss (reward is used as a proxy for loss in this simplified example)
-                loss = criterion(output, torch.tensor([num_knives, num_guns, num_missiles], dtype=torch.float32))
+            # Perform policy gradient update based on episode rewards
+            # Here, you can implement the policy gradient update logic to adjust the model's weights
+            # based on the episode rewards to maximize the total reward obtained during the episode.
 
-                # Backward pass and optimize
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            # Print total reward for the episode
+            print(f"Episode {episode + 1}/{num_episodes}, Total Reward: {total_reward}")
 
-            # Print average reward for the episode
-            avg_reward = total_reward / plays_per_game
-            print(f"Episode {episode + 1}/{num_episodes}, Average Reward: {avg_reward}")
-
-        # Save the trained model
-        torch.save(model.state_dict(), "weapon_selector_model.pth")
