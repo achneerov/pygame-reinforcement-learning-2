@@ -63,8 +63,6 @@ class Game:
 
         # Loop through the seed to encounter enemies and use weapons accordingly
 
-        if self.total_cost < self.num_levels * self.missile:
-            reward += 1
         for enemy in self.seed:
             reward += 1
             if enemy == "A":
@@ -111,10 +109,9 @@ class Game:
         print("reward:", reward)
         if self.game_status == "won":
             print("All enemies defeated. You win!")
-            return reward
         else:
             print("you lost.")
-            return reward
+        return reward
 
 
 class WeaponSelector(nn.Module):
@@ -149,12 +146,12 @@ if __name__ == "__main__":
         num_episodes = 10000  # Number of games for training
         plays_per_game = 100  # Number of plays per game
         input_size = 7  # Number of input features: percentages of A, B, and C, num_levels, and prices of three weapons
-        hidden_size = 2048  # Hidden layer size
+        hidden_size = 512  # Hidden layer size
         output_size = 3  # Number of output values: num_knives, num_guns, num_missiles
 
         # Initialize neural network and optimizer
         model = WeaponSelector(input_size, hidden_size, output_size)
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
+        optimizer = optim.Adam(model.parameters(), lr=0.0001)
         criterion = nn.MSELoss()
 
         # Training loop
@@ -186,9 +183,13 @@ if __name__ == "__main__":
                 total_reward += reward  # Accumulate the reward
                 episode_rewards.append(reward)  # Store reward for the current play
 
-            # Perform policy gradient update based on episode rewards
-            # Here, you can implement the policy gradient update logic to adjust the model's weights
-            # based on the episode rewards to maximize the total reward obtained during the episode.
+            baseline_reward = sum(episode_rewards) / plays_per_game
+            policy_loss = sum([(reward - baseline_reward) * output.sum() for reward, output in zip(episode_rewards, model(input_features))])
+
+            # Zero gradients, perform a backward pass, and update the weights
+            optimizer.zero_grad()
+            policy_loss.backward()
+            optimizer.step()
 
             # Print total reward for the episode
             print(f"Episode {episode + 1}/{num_episodes}, Total Reward: {total_reward}")
