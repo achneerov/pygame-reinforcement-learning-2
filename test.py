@@ -61,10 +61,14 @@ class Game:
         # Display the total cost
         print(f"Total cost for {num_knives} knives, {num_guns} guns, and {num_missiles} missiles: {self.total_cost}")
 
+        #if num_knives + num_guns + num_missiles < len(self.seed):
+            #reward += -10
+            #return reward
+
         # Loop through the seed to encounter enemies and use weapons accordingly
 
         for enemy in self.seed:
-            reward += 1
+            reward += 10
             if enemy == "A":
                 if num_knives > 0:
                     print("Enemy type A encountered. Using a knife.")
@@ -143,7 +147,7 @@ if __name__ == "__main__":
 
     if mode == "2":
         # Define parameters for training
-        num_episodes = 10000  # Number of games for training
+        num_games = 1000  # Number of games for training
         plays_per_game = 100  # Number of plays per game
         input_size = 7  # Number of input features: percentages of A, B, and C, num_levels, and prices of three weapons
         hidden_size = 512  # Hidden layer size
@@ -154,43 +158,38 @@ if __name__ == "__main__":
         optimizer = optim.Adam(model.parameters(), lr=0.0001)
         criterion = nn.MSELoss()
 
-        # Training loop
-        # Training loop
-        for episode in range(num_episodes):
-            total_reward = 0
-            episode_rewards = []  # List to store rewards for the current episode
+        for param in model.parameters():
+            param.requires_grad = True
 
-            for _ in range(plays_per_game):
-                # Initialize game
-                game = Game()
+        for game_num in range(num_games):
+                total_game_reward = 0
 
-                # Prepare input features including weapon prices
-                input_features = torch.tensor([
-                    game.A, game.B, game.C, game.num_levels,
-                    game.knife, game.gun, game.missile
-                ], dtype=torch.float32)
+                for round_num in range(plays_per_game):
+                    game_instance = Game()
 
-                # Forward pass through the neural network
-                output = model(input_features)
+                    input_features = torch.tensor([
+                        game_instance.A, game_instance.B, game_instance.C,
+                        game_instance.num_levels, game_instance.knife, game_instance.gun, game_instance.missile
+                    ], dtype=torch.float32)
 
-                # Convert output to integer values for number of weapons
-                num_knives = int(output[0].item())
-                num_guns = int(output[1].item())
-                num_missiles = int(output[2].item())
+                    # Predict actions using the neural network
+                    output = model(input_features)
+                    num_knives_pred, num_guns_pred, num_missiles_pred = output
 
-                # Play the game and get reward
-                reward = game.play(num_knives, num_guns, num_missiles)
-                total_reward += reward  # Accumulate the reward
-                episode_rewards.append(reward)  # Store reward for the current play
+                    # Play the game with predicted actions
+                    round_reward = game_instance.play(int(num_knives_pred.item()), int(num_guns_pred.item()), int(num_missiles_pred.item()))
 
-            baseline_reward = sum(episode_rewards) / plays_per_game
-            policy_loss = sum([(reward - baseline_reward) * output.sum() for reward, output in zip(episode_rewards, model(input_features))])
+                    # Compute loss based on the difference between expected and actual rewards
+                    expected_reward_tensor = torch.tensor(round_reward, dtype=torch.float32)
+                    loss = criterion(output, expected_reward_tensor)
 
-            # Zero gradients, perform a backward pass, and update the weights
-            optimizer.zero_grad()
-            policy_loss.backward()
-            optimizer.step()
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
-            # Print total reward for the episode
-            print(f"Episode {episode + 1}/{num_episodes}, Total Reward: {total_reward}")
+                    total_game_reward += round_reward
+
+                # Print the total reward accumulated for this game
+                print(f"Game {game_num + 1}/{num_games}, Total Reward: {total_game_reward}")
+
 
