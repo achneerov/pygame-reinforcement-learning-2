@@ -166,12 +166,18 @@ if __name__ == "__main__":
             round_reward = game_instance.play(int(num_knives_pred.item()), int(num_guns_pred.item()),
                                               int(num_missiles_pred.item()))
 
-            expected_reward_tensor = torch.tensor(round_reward, dtype=torch.float32)
+            # Create a target tensor with the predicted values
+            expected_reward_tensor = torch.tensor(
+                [num_knives_pred.item(), num_guns_pred.item(), num_missiles_pred.item()],
+                dtype=torch.float32)
+
+            # Ensure that the expected_reward_tensor has the same size as the output
+            expected_reward_tensor = expected_reward_tensor.view_as(output)
+
             loss = criterion(output, expected_reward_tensor)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
             game_instance.print_stats(game_num)
             game_instance.reset()
