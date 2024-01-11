@@ -8,9 +8,9 @@ mode = "2"
 
 class Game:
     def __init__(self):
-        self.A = random.uniform(0, 1)
-        self.B = random.uniform(self.A, 1)
-        self.C = random.uniform(self.B, 1)
+        self.A = 0.4
+        self.B = 0.7
+        self.C = 0.9
         self.percentages = [("A", self.A), ("B", self.B), ("C", self.C)]
         self.num_levels = 100
         self.chars, self.weights = zip(*self.percentages)
@@ -27,9 +27,9 @@ class Game:
                 enemy = "C"
             self.seed += enemy
 
-        self.knife = random.uniform(0, 10)
-        self.gun = random.uniform(10, 30)
-        self.missile = random.uniform(30, 100)
+        self.knife = 1
+        self.gun = 5
+        self.missile = 15
         self.weapon_costs = {"knife": self.knife, "gun": self.gun, "missile": self.missile}
         self.enemy_types = ''.join(self.seed)
 
@@ -74,7 +74,6 @@ class Game:
 
         for enemy in self.seed:
             self.current_level += 1
-            self.reward += 10
             if enemy == "A":
                 if num_knives > 0:
                     num_knives -= 1
@@ -100,16 +99,22 @@ class Game:
                     self.game_status = "lost"
                     break
 
+            self.reward += 10
+
+        if self.game_status == "won":
+            self.reward += 10000
+            self.reward -= self.total_cost
         return self.reward
 
-    def print_stats(self, game_num=None, round_num=None):
-        if round_num == self.num_levels // 2:
+    def print_stats(self, game_num=None):
+        if game_num % 1000 == 0:
             print()
-            print("current game: ", game_num, "current round: ", round_num, "current weights of enemies: ",
-                  "Weights of enemies: ", self.percentages, "Game seed: ", self.seed, "Price of weapons: ",
-                  self.weapon_costs,
-                  "number of rounds in a game: ", self.num_levels,
-                  "levels beaten: ", self.current_level,"number of knives: ", self.initial_num_knives, "number of guns: ", self.initial_num_guns, "number of missiles", self.initial_num_missiles, "total price: ", self.get_cost(), "reward: ", self.reward)
+            print("current game: ", game_num, "current weights of enemies: ",
+                  "Weights of enemies: ", self.percentages, "Game seed: ", self.seed,
+                  "Price of weapons: ", self.weapon_costs, "number of rounds in a game: ", self.num_levels,
+                  "levels beaten: ", self.current_level, "number of knives: ", self.initial_num_knives,
+                  "number of guns: ", self.initial_num_guns, "number of missiles", self.initial_num_missiles,
+                  "total price: ", self.get_cost(), "reward: ", self.reward)
 
 
 class WeaponSelector(nn.Module):
@@ -139,37 +144,34 @@ if __name__ == "__main__":
         game.play(num_knives, num_guns, num_missiles)
 
     if mode == "2":
-        num_games = 1000
-        plays_per_game = 100
+        num_games = 250_000
         input_size = 7
-        hidden_size = 512
+        hidden_size = 256
         output_size = 3
 
         model = WeaponSelector(input_size, hidden_size, output_size)
-        optimizer = optim.Adam(model.parameters(), lr=0.0001)
+        optimizer = optim.Adam(model.parameters(), lr=0.000001)
         criterion = nn.MSELoss()
 
         for game_num in range(num_games):
             game_instance = Game()
+            input_features = torch.tensor([
+                game_instance.A, game_instance.B, game_instance.C,
+                game_instance.num_levels, game_instance.knife, game_instance.gun, game_instance.missile
+            ], dtype=torch.float32)
 
-            for round_num in range(plays_per_game):
-                input_features = torch.tensor([
-                    game_instance.A, game_instance.B, game_instance.C,
-                    game_instance.num_levels, game_instance.knife, game_instance.gun, game_instance.missile
-                ], dtype=torch.float32)
+            output = model(input_features)
+            num_knives_pred, num_guns_pred, num_missiles_pred = output
 
-                output = model(input_features)
-                num_knives_pred, num_guns_pred, num_missiles_pred = output
+            round_reward = game_instance.play(int(num_knives_pred.item()), int(num_guns_pred.item()),
+                                              int(num_missiles_pred.item()))
 
-                round_reward = game_instance.play(int(num_knives_pred.item()), int(num_guns_pred.item()),
-                                                  int(num_missiles_pred.item()))
+            expected_reward_tensor = torch.tensor(round_reward, dtype=torch.float32)
+            loss = criterion(output, expected_reward_tensor)
 
-                expected_reward_tensor = torch.tensor(round_reward, dtype=torch.float32)
-                loss = criterion(output, expected_reward_tensor)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-                game_instance.print_stats(game_num, round_num)
-                game_instance.reset()
+            game_instance.print_stats(game_num)
+            game_instance.reset()
