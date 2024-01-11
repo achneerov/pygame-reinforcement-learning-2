@@ -8,16 +8,8 @@ mode = 2
 
 class Game:
     def __init__(self):
-        self.rat = 0.4
-        self.goblin = 0.7
-        self.dragon = 0.9
-        self.percentages = [("R", self.rat), ("G", self.goblin), ("D", self.dragon)]
         self.num_levels = 100
-        self.chars, self.weights = zip(*self.percentages)
-        self.seed = "DRRGRRRRRDRGDRGRRGRRDDDDGRRDRRGDGGRDDGGDGDRRDRRRRRRDGRDDRGRDRRGDDDGRDGGRRGGGDDDRGGGGRDRGGRRGRRRGDRRG"
-        self.num_rats = 44
-        self.num_goblins = 29
-        self.num_dragons = 27
+        self.seed = "3112111113123121121133332113112322133223231131111113213312131123332132211222333122221312211211123112"
 
         self.knife_price = 1
         self.gun_price = 5
@@ -47,13 +39,8 @@ class Game:
         self.num_knives = 0
         self.num_guns = 0
         self.num_missiles = 0
-        self.num_rats = 0
-        self.num_goblins = 0
-        self.num_dragons = 0
 
-    def get_state(self):
-        return [self.num_levels, self.knife_price, self.gun_price, self.missile_price, self.rat, self.goblin,
-                self.dragon]
+
 
     def get_cost(self):
         total_cost = 0
@@ -73,7 +60,7 @@ class Game:
 
         for enemy in self.seed:
             self.current_level += 1
-            if enemy == "R":
+            if enemy == "1":
                 if num_knives > 0:
                     num_knives -= 1
                 elif num_guns > 0:
@@ -83,7 +70,7 @@ class Game:
                 else:
                     self.game_status = "lost"
                     break
-            elif enemy == "G":
+            elif enemy == "2":
                 if num_guns > 0:
                     num_guns -= 1
                 elif num_missiles > 0:
@@ -91,7 +78,7 @@ class Game:
                 else:
                     self.game_status = "lost"
                     break
-            elif enemy == "D":
+            elif enemy == "3":
                 if num_missiles > 0:
                     num_missiles -= 1
                 else:
@@ -107,21 +94,25 @@ class Game:
 
     def print_stats(self, game_num=None):
         print()
-        print("current game: ", game_num, "current weights of enemies: ",
-              "Weights of enemies: ", self.percentages, "Game seed: ", self.seed,
+        print("current game: ", game_num, "current weights of enemies: ", "Game seed: ", self.seed,
               "Price of weapons: ", self.weapon_costs, "number of rounds in a game: ", self.num_levels,
-              "levels beaten: ", self.current_level, "number of rats: ", self.num_rats, "number of goblins",
-              self.num_goblins,
-              "number of dragons: ", self.num_dragons, "number of knives: ", self.initial_num_knives,
+              "levels beaten: ", self.current_level, "number of knives: ", self.initial_num_knives,
               "number of guns: ", self.initial_num_guns, "number of missiles", self.initial_num_missiles,
               "total price: ", self.get_cost(), "reward: ", self.reward)
 
+    def get_state(self):
+        state = [self.num_levels, self.knife_price, self.gun_price, self.missile_price]
+        for num in self.seed:
+            state.append(int(num))
+        return state
+
+
 
 class QNetwork(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, input_dim, hidden_dim, output_dim):
         super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 256)
-        self.fc2 = nn.Linear(256, output_dim)
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -137,11 +128,12 @@ if __name__ == "__main__":
 
     if mode == 2:
         # Define the state and action dimensions
-        state_dim = 7
+        state_dim = 104
+        hidden_dim = 1024
         action_dim = 3  # Number of actions: [num_knives, num_guns, num_missiles]
 
         # Initialize Q-network
-        q_network = QNetwork(state_dim, action_dim)
+        q_network = QNetwork(state_dim, hidden_dim, action_dim)
         optimizer = optim.Adam(q_network.parameters(), lr=0.001)
         criterion = nn.MSELoss()
 
@@ -188,3 +180,4 @@ if __name__ == "__main__":
 
             if _ % 1000 == 0:
                 game.print_stats(game_num=_)
+                print(epsilon)
