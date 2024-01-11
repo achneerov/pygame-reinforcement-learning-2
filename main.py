@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+mode = 2
+
 
 class Game:
     def __init__(self):
@@ -12,24 +14,10 @@ class Game:
         self.percentages = [("R", self.rat), ("G", self.goblin), ("D", self.dragon)]
         self.num_levels = 100
         self.chars, self.weights = zip(*self.percentages)
-        self.seed = ""
-        self.num_rats = 0
-        self.num_goblins = 0
-        self.num_dragons = 0
-
-        for _ in range(self.num_levels):
-            j = random.uniform(0, 1)
-            enemy = ""
-            if 0 <= j < self.rat:
-                enemy = "R"
-                self.num_rats += 1
-            elif self.rat <= j < self.goblin:
-                enemy = "G"
-                self.num_goblins += 1
-            elif self.goblin <= j <= 1:
-                enemy = "D"
-                self.num_dragons += 1
-            self.seed += enemy
+        self.seed = "DRRGRRRRRDRGDRGRRGRRDDDDGRRDRRGDGGRDDGGDGDRRDRRRRRRDGRDDRGRDRRGDDDGRDGGRRGGGDDDRGGGGRDRGGRRGRRRGDRRG"
+        self.num_rats = 44
+        self.num_goblins = 29
+        self.num_dragons = 27
 
         self.knife_price = 1
         self.gun_price = 5
@@ -122,7 +110,8 @@ class Game:
         print("current game: ", game_num, "current weights of enemies: ",
               "Weights of enemies: ", self.percentages, "Game seed: ", self.seed,
               "Price of weapons: ", self.weapon_costs, "number of rounds in a game: ", self.num_levels,
-              "levels beaten: ", self.current_level,"number of rats: ", self.num_rats, "number of goblins", self.num_goblins,
+              "levels beaten: ", self.current_level, "number of rats: ", self.num_rats, "number of goblins",
+              self.num_goblins,
               "number of dragons: ", self.num_dragons, "number of knives: ", self.initial_num_knives,
               "number of guns: ", self.initial_num_guns, "number of missiles", self.initial_num_missiles,
               "total price: ", self.get_cost(), "reward: ", self.reward)
@@ -140,56 +129,62 @@ class QNetwork(nn.Module):
         return x
 
 
-# Define the state and action dimensions
-state_dim = 7
-action_dim = 3  # Number of actions: [num_knives, num_guns, num_missiles]
+if __name__ == "__main__":
+    if mode == 1:
+        game = Game()
+        game.play(44, 29, 27)
+        game.print_stats()
 
-# Initialize Q-network
-q_network = QNetwork(state_dim, action_dim)
-optimizer = optim.Adam(q_network.parameters(), lr=0.001)
-criterion = nn.MSELoss()
+    if mode == 2:
+        # Define the state and action dimensions
+        state_dim = 7
+        action_dim = 3  # Number of actions: [num_knives, num_guns, num_missiles]
 
-# Q-learning parameters
-gamma = 0.99  # Discount factor
-epsilon = 0.1  # Epsilon-greedy exploration parameter
-num_games = 25_000
+        # Initialize Q-network
+        q_network = QNetwork(state_dim, action_dim)
+        optimizer = optim.Adam(q_network.parameters(), lr=0.001)
+        criterion = nn.MSELoss()
 
-record_reward = 0  # Variable to store the previous reward
+        # Q-learning parameters
+        gamma = 0.999999  # Discount factor
+        epsilon = 0.2  # Epsilon-greedy exploration parameter
+        num_games = 250_000
 
-for _ in range(num_games):
-    # Initialize game environment
-    game = Game()
+        record_reward = 0  # Variable to store the previous reward
 
-    state = torch.tensor(game.get_state(), dtype=torch.float32)
+        for _ in range(num_games):
+            # Initialize game environment
+            game = Game()
 
-    # Compute Q-values for the current state
-    q_values = q_network(state)
+            state = torch.tensor(game.get_state(), dtype=torch.float32)
 
-    # Choose an action using epsilon-greedy policy
-    if random.random() < epsilon:
-        action_values = [random.randint(0, game.num_levels),
-                  random.randint(0, game.num_levels),
-                  random.randint(0, game.num_levels)]
-        epsilon -= 0.0001
-    else:
-        action_values = [int(q_values[0].item()),
-                         int(q_values[1].item()),
-                         int(q_values[2].item())]
+            # Compute Q-values for the current state
+            q_values = q_network(state)
 
-    reward = game.play(action_values[0], action_values[1], action_values[2])
+            # Choose an action using epsilon-greedy policy
+            if random.random() < epsilon:
+                action_values = [random.randint(0, game.num_levels),
+                                 random.randint(0, game.num_levels),
+                                 random.randint(0, game.num_levels)]
+                epsilon -= 0.00001
+            else:
+                action_values = [int(q_values[0].item()),
+                                 int(q_values[1].item()),
+                                 int(q_values[2].item())]
 
-    # Compare current reward with previous reward
-    if reward > record_reward:
-        # Compute the loss (MSE between Q-values and reward)
-        loss = criterion(q_values, torch.tensor([reward, reward, reward], dtype=torch.float32))
+            reward = game.play(action_values[0], action_values[1], action_values[2])
 
-        # Zero gradients, perform a backward pass, and update the weights
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            # Compare current reward with previous reward
+            if reward >= record_reward:
+                # Compute the loss (MSE between Q-values and reward)
+                loss = criterion(q_values, torch.tensor([reward, reward, reward], dtype=torch.float32))
 
-        record_reward = reward  # Update the previous reward
+                # Zero gradients, perform a backward pass, and update the weights
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-    if _ % 1000 == 0:
-        game.print_stats(game_num=_)
+                record_reward = reward  # Update the previous reward
 
+            if _ % 1000 == 0:
+                game.print_stats(game_num=_)
