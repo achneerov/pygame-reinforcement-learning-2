@@ -9,29 +9,37 @@ mode = "2"
 class Game:
     def __init__(self):
         self.A = random.uniform(0, 1)
-        self.B = random.uniform(0, 1 - self.A)
-        self.C = 1 - self.A - self.B
-
+        self.B = random.uniform(self.A, 1)
+        self.C = random.uniform(self.B, 1)
         self.percentages = [("A", self.A), ("B", self.B), ("C", self.C)]
-
         self.num_levels = 100
-
         self.chars, self.weights = zip(*self.percentages)
+        self.seed = ""
 
-        self.seed = random.choices(self.chars, weights=self.weights, k=self.num_levels)
+        for _ in range(self.num_levels):
+            j = random.uniform(0, 1)
+            enemy = ""
+            if 0 <= j < self.A:
+                enemy = "A"
+            elif self.A <= j < self.B:
+                enemy = "B"
+            elif self.B <= j <= 1:
+                enemy = "C"
+            self.seed += enemy
 
         self.knife = random.uniform(0, 10)
-        self.gun = random.uniform(3, 30)
-        self.missile = random.uniform(10, 100)
-
+        self.gun = random.uniform(10, 30)
+        self.missile = random.uniform(30, 100)
         self.weapon_costs = {"knife": self.knife, "gun": self.gun, "missile": self.missile}
-
         self.enemy_types = ''.join(self.seed)
 
         self.game_status = "won"
         self.total_cost = 0
         self.current_level = 0
         self.reward = 0
+        self.initial_num_knives = 0
+        self.initial_num_guns = 0
+        self.initial_num_missiles = 0
         self.num_knives = 0
         self.num_guns = 0
         self.num_missiles = 0
@@ -41,14 +49,14 @@ class Game:
         self.total_cost = 0
         self.current_level = 0
         self.reward = 0
+        self.initial_num_knives = 0
+        self.initial_num_guns = 0
+        self.initial_num_missiles = 0
         self.num_knives = 0
         self.num_guns = 0
         self.num_missiles = 0
 
     def get_cost(self):
-        """
-        Calculate the total cost based on the number of each weapon type used.
-        """
         total_cost = 0
         total_cost += self.num_knives * self.weapon_costs["knife"]
         total_cost += self.num_guns * self.weapon_costs["gun"]
@@ -56,13 +64,13 @@ class Game:
         return total_cost
 
     def play(self, num_knives, num_guns, num_missiles):
+        self.initial_num_knives = num_knives
+        self.initial_num_guns = num_guns
+        self.initial_num_missiles = num_missiles
         self.num_knives = num_knives
         self.num_guns = num_guns
         self.num_missiles = num_missiles
-
         self.total_cost = self.get_cost()
-
-        print(f"Total cost for {num_knives} knives, {num_guns} guns, and {num_missiles} missiles: {self.total_cost}")
 
         for enemy in self.seed:
             self.current_level += 1
@@ -95,11 +103,13 @@ class Game:
         return self.reward
 
     def print_stats(self, game_num=None, round_num=None):
-        print()
-        print("current game: ", game_num, "current round: ", round_num, "current weights of enemies: ",
-              "Weights of enemies: ", self.percentages, "Price of weapons: ", self.weapon_costs,
-              "number of rounds in a game: ", self.num_levels,
-              "levels beaten: ", self.current_level, "total price: ", self.get_cost(), "reward: ", self.reward)
+        if round_num == self.num_levels // 2:
+            print()
+            print("current game: ", game_num, "current round: ", round_num, "current weights of enemies: ",
+                  "Weights of enemies: ", self.percentages, "Game seed: ", self.seed, "Price of weapons: ",
+                  self.weapon_costs,
+                  "number of rounds in a game: ", self.num_levels,
+                  "levels beaten: ", self.current_level,"number of knives: ", self.initial_num_knives, "number of guns: ", self.initial_num_guns, "number of missiles", self.initial_num_missiles, "total price: ", self.get_cost(), "reward: ", self.reward)
 
 
 class WeaponSelector(nn.Module):
@@ -163,4 +173,3 @@ if __name__ == "__main__":
 
                 game_instance.print_stats(game_num, round_num)
                 game_instance.reset()
-
