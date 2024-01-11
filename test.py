@@ -17,7 +17,7 @@ class Game:
         self.percentages = [("A", self.A), ("B", self.B), ("C", self.C)]
 
         # Generate random number of levels
-        self.num_levels = random.randint(20, 30)
+        self.num_levels = 100
 
         # Extract characters and weights from percentages
         self.chars, self.weights = zip(*self.percentages)
@@ -158,14 +158,11 @@ if __name__ == "__main__":
         optimizer = optim.Adam(model.parameters(), lr=0.0001)
         criterion = nn.MSELoss()
 
-        for param in model.parameters():
-            param.requires_grad = True
-
         for game_num in range(num_games):
                 total_game_reward = 0
+                game_instance = Game()
 
                 for round_num in range(plays_per_game):
-                    game_instance = Game()
 
                     input_features = torch.tensor([
                         game_instance.A, game_instance.B, game_instance.C,
