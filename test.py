@@ -35,87 +35,97 @@ class Game:
 
         # Create enemy types based on seed
         self.enemy_types = ''.join(self.seed)
+
         self.game_status = "won"
         self.total_cost = 0
+        self.current_level = 0
+        self.reward = 0
+        self.num_knives = 0
+        self.num_guns = 0
+        self.num_missiles = 0
 
     def reset(self):
         self.game_status = "won"
         self.total_cost = 0
+        self.current_level = 0
+        self.reward = 0
+        self.num_knives = 0
+        self.num_guns = 0
+        self.num_missiles = 0
 
-    def get_cost(self, num_knives, num_guns, num_missiles):
+    def get_cost(self):
         """
         Calculate the total cost based on the number of each weapon type used.
         """
         total_cost = 0
-        total_cost += num_knives * self.weapon_costs["knife"]
-        total_cost += num_guns * self.weapon_costs["gun"]
-        total_cost += num_missiles * self.weapon_costs["missile"]
+        total_cost += self.num_knives * self.weapon_costs["knife"]
+        total_cost += self.num_guns * self.weapon_costs["gun"]
+        total_cost += self.num_missiles * self.weapon_costs["missile"]
         return total_cost
 
     def play(self, num_knives, num_guns, num_missiles):
+        self.num_knives = num_knives
+        self.num_guns = num_guns
+        self.num_missiles = num_missiles
 
-        reward = 0
         # Calculate the total cost based on the weapons
-        self.total_cost = self.get_cost(num_knives, num_guns, num_missiles)
+        self.total_cost = self.get_cost()
 
         # Display the total cost
         print(f"Total cost for {num_knives} knives, {num_guns} guns, and {num_missiles} missiles: {self.total_cost}")
 
-        #if num_knives + num_guns + num_missiles < len(self.seed):
-            #reward += -10
-            #return reward
-
         # Loop through the seed to encounter enemies and use weapons accordingly
 
         for enemy in self.seed:
-            reward += 10
+            self.current_level += 1
+            self.reward += 10
             if enemy == "A":
                 if num_knives > 0:
-                    print("Enemy type A encountered. Using a knife.")
+                    # print("Enemy type A encountered. Using a knife.")
                     num_knives -= 1
-                    print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
+                    # print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
                 elif num_guns > 0:
-                    print("No knives left. Using a gun.")
+                    # print("No knives left. Using a gun.")
                     num_guns -= 1
-                    print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
+                    # print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
                 elif num_missiles > 0:
-                    print("No knives or guns left. Using a missile.")
+                    # print("No knives or guns left. Using a missile.")
                     num_missiles -= 1
-                    print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
+                    # print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
                 else:
-                    print("Out of weapons.")
+                    # print("Out of weapons.")
                     self.game_status = "lost"
                     break
-
             elif enemy == "B":
                 if num_guns > 0:
-                    print("Enemy type B encountered. Using a gun.")
+                    # print("Enemy type B encountered. Using a gun.")
                     num_guns -= 1
-                    print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
+                    # print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
                 elif num_missiles > 0:
-                    print("No guns left. Using a missile.")
+                    # print("No guns left. Using a missile.")
                     num_missiles -= 1
-                    print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
+                    # print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
                 else:
-                    print("Out of weapons.")
+                    # print("Out of weapons.")
                     self.game_status = "lost"
                     break
             elif enemy == "C":
                 if num_missiles > 0:
-                    print("Enemy type C encountered. Using a missile.")
+                    # print("Enemy type C encountered. Using a missile.")
                     num_missiles -= 1
-                    print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
+                    # print(f"Remaining weapons: Knives: {num_knives}, Guns: {num_guns}, Missiles: {num_missiles}")
                 else:
-                    print("Out of missiles.")
+                    # print("Out of missiles.")
                     self.game_status = "lost"
                     break
 
-        print("reward:", reward)
-        if self.game_status == "won":
-            print("All enemies defeated. You win!")
-        else:
-            print("you lost.")
-        return reward
+        return self.reward
+
+    def print_stats(self, game_num=None, round_num=None):
+        print()
+        print("current game: ", game_num, "current round: ", round_num, "current weights of enemies: ",
+              "Weights of enemies: ", self.percentages, "Price of weapons: ", self.weapon_costs, "number of rounds in a game: ", self.num_levels,
+              "levels beaten: ", self.current_level, "total price: ", self.get_cost(), "reward: ", self.reward)
 
 
 class WeaponSelector(nn.Module):
@@ -159,34 +169,35 @@ if __name__ == "__main__":
         criterion = nn.MSELoss()
 
         for game_num in range(num_games):
-                total_game_reward = 0
-                game_instance = Game()
+            total_game_reward = 0
+            game_instance = Game()
 
-                for round_num in range(plays_per_game):
+            for round_num in range(plays_per_game):
+                input_features = torch.tensor([
+                    game_instance.A, game_instance.B, game_instance.C,
+                    game_instance.num_levels, game_instance.knife, game_instance.gun, game_instance.missile
+                ], dtype=torch.float32)
 
-                    input_features = torch.tensor([
-                        game_instance.A, game_instance.B, game_instance.C,
-                        game_instance.num_levels, game_instance.knife, game_instance.gun, game_instance.missile
-                    ], dtype=torch.float32)
+                # Predict actions using the neural network
+                output = model(input_features)
+                num_knives_pred, num_guns_pred, num_missiles_pred = output
 
-                    # Predict actions using the neural network
-                    output = model(input_features)
-                    num_knives_pred, num_guns_pred, num_missiles_pred = output
+                # Play the game with predicted actions
+                round_reward = game_instance.play(int(num_knives_pred.item()), int(num_guns_pred.item()),
+                                                  int(num_missiles_pred.item()))
 
-                    # Play the game with predicted actions
-                    round_reward = game_instance.play(int(num_knives_pred.item()), int(num_guns_pred.item()), int(num_missiles_pred.item()))
+                # Compute loss based on the difference between expected and actual rewards
+                expected_reward_tensor = torch.tensor(round_reward, dtype=torch.float32)
+                loss = criterion(output, expected_reward_tensor)
 
-                    # Compute loss based on the difference between expected and actual rewards
-                    expected_reward_tensor = torch.tensor(round_reward, dtype=torch.float32)
-                    loss = criterion(output, expected_reward_tensor)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
+                total_game_reward += round_reward
 
-                    total_game_reward += round_reward
+                game_instance.print_stats(game_num, round_num)
+                game_instance.reset()
 
-                # Print the total reward accumulated for this game
-                print(f"Game {game_num + 1}/{num_games}, Total Reward: {total_game_reward}")
-
-
+            # Print the total reward accumulated for this game
+            print(f"Game {game_num + 1}/{num_games}, Total Reward: {total_game_reward}")
